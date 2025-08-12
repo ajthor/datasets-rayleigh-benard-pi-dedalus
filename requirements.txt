@@ -4,3 +4,7 @@ scikit-learn
 matplotlib
 pyarrow
 pillow
+dedalus>=3.0.0
+h5py
+scipy
+mpi4py

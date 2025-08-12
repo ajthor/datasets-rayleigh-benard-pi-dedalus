@@ -1,41 +1,28 @@
 #!/usr/bin/env python3
 """
-Generate PDE dataset and save to parquet files in chunks.
-
-INSTRUCTIONS FOR CLAUDE:
-1. Update the docstring to describe your specific dataset
-2. Update the import statement to match your dataset class name
-3. Update the dataset instantiation call below
-4. The rest of the file should work as-is for any dataset following the template
+Generate Rayleigh-Benard dataset and save to parquet files in chunks.
 """
 
 import os
 import numpy as np
 import pyarrow as pa
 import pyarrow.parquet as pq
-# TODO: Update this import to match your dataset class name
-from dataset import YourDataset  # Replace YourDataset with your actual class name
+from rayleigh_benard_dataset import RayleighBenardDataset
 
 
 def generate_dataset_split(
     split_name="train", num_samples=1000, chunk_size=100, output_dir="data"
 ):
-    """
-    Generate a dataset split and save as chunked parquet files.
-    
-    INSTRUCTIONS FOR CLAUDE:
-    - This function should work as-is for any dataset following the template
-    - Only modify the dataset instantiation below if you need custom parameters
-    """
+    """Generate a dataset split and save as chunked parquet files."""
 
     os.makedirs(output_dir, exist_ok=True)
 
-    # TODO: Update this instantiation to match your dataset class and parameters
-    dataset = YourDataset()  # Add your dataset parameters here if needed
-    # Examples:
-    # dataset = HeatEquationDataset(Lx=5, Nx=512, diffusion_coeff=0.01)
-    # dataset = WaveDataset(wave_speed=2.0, boundary_conditions="reflective")
-    
+    dataset = RayleighBenardDataset(
+        Nx=256,
+        Nz=64,
+        stop_sim_time=30,
+        save_interval=1.0,
+    )
     num_chunks = (num_samples + chunk_size - 1) // chunk_size  # Ceiling division
 
     print(f"Generating {num_samples} {split_name} samples in {num_chunks} chunks...")
@@ -58,10 +45,19 @@ def generate_dataset_split(
         if (i + 1) % chunk_size == 0 or i == num_samples - 1:
             chunk_idx = i // chunk_size
 
-            # Convert numpy arrays to lists for PyArrow compatibility
+            # Convert numpy arrays and scalars to PyArrow compatible format
             table_data = {}
             for key, values in chunk_data.items():
-                table_data[key] = [arr.tolist() for arr in values]
+                # Handle both arrays and scalar values
+                converted_values = []
+                for val in values:
+                    if isinstance(val, np.ndarray):
+                        # Numpy array - convert to list
+                        converted_values.append(val.tolist())
+                    else:
+                        # Scalar value - use directly
+                        converted_values.append(val)
+                table_data[key] = converted_values
 
             # Convert to PyArrow table
             table = pa.table(table_data)
@@ -83,8 +79,8 @@ def generate_dataset_split(
 if __name__ == "__main__":
     np.random.seed(42)
 
-    # Generate train split
-    generate_dataset_split("train", num_samples=1000, chunk_size=100)
+    # Generate train split (smaller samples for 2D system)
+    generate_dataset_split("train", num_samples=1000, chunk_size=5)
 
     # Generate test split
-    generate_dataset_split("test", num_samples=200, chunk_size=100)
+    generate_dataset_split("test", num_samples=200, chunk_size=5)
